@@ -29,6 +29,18 @@ export type Project = {
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
+
+  investorSnapshot?: {
+    completionPercentage: number;
+    isCompleted: boolean;
+    isInvestorReady: boolean;
+
+    mrr: number | null;
+    arr: number | null;
+
+    amountRaising: number | null;
+    equityOffered: number | null;
+  };
 };
 
 export type ProjectReview = {
@@ -62,7 +74,7 @@ export type StartupMember = {
 };
 
 export type StartupDetail = Project & {
-  owner: AuthProfile;
+  founder: AuthProfile;
   applications: ProjectApplication[];
   posts: unknown[];
   reviews: ProjectReview[];

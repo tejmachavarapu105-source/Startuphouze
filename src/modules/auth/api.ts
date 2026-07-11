@@ -8,13 +8,18 @@ import {
   LogoutResponse,
   RegisterPayload
 } from "@/modules/auth/types";
+import { normalizeAuthProfile } from "@/modules/profile/normalizeProfile";
 
-const toAuthUser = (response: AuthMeResponse): AuthUser => ({
-  id: response.id,
-  email: response.email,
-  fullName: response.profile.fullName,
-  profile: response.profile
-});
+const toAuthUser = (response: AuthMeResponse): AuthUser => {
+  const profile = normalizeAuthProfile(response.profile);
+
+  return {
+    id: response.id,
+    email: response.email,
+    fullName: profile.fullName,
+    profile
+  };
+};
 
 export const authApi = {
   login: async (payload: LoginPayload) => {

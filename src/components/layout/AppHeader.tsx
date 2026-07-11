@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
+import { useRoute } from "@react-navigation/native";
 
 import { MainTabParamList } from "@/app/navigation/types";
 import { AppLogo } from "@/components/brand/AppLogo";
@@ -15,30 +16,62 @@ type MenuRoute = Exclude<keyof MainTabParamList, "Home" | "Jobs" | "Events" | "S
 type ProfileMenuItem = {
   label: string;
   icon: keyof typeof Feather.glyphMap;
-  route?: MenuRoute;
-  action?: "logout";
+  route?: string;
+  action?: "logout" | "meetings";
 };
 
 const profileMenuItems: ProfileMenuItem[] = [
   { label: "My profile", icon: "user", route: "Profile" },
   { label: "Discover", icon: "compass", route: "Discover" },
   { label: "My network", icon: "users", route: "Network" },
-  { label: "Projects", icon: "send", route: "Projects" },
-  { label: "Messages", icon: "message-square", route: "Messages" },
-  { label: "New project", icon: "plus", route: "Projects" }
+  { label: "My Meetings", icon: "send", action: "meetings" },
+  { label: "Messages", icon: "message-square", route: "Messages" }
 ];
 
 export const AppHeader = () => {
   const colors = useThemeTokens();
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const route = useRoute();
+
+  const showBackButton = [
+    "Discover",
+    "Network",
+    "Profile",
+    "UserProfile",
+  ].includes(route.name as string);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const initial = user?.profile.fullName?.charAt(0).toUpperCase() || "S";
   const isAdmin = user?.role === "ADMIN";
-  const menuItems = isAdmin
-    ? [...profileMenuItems, { label: "Admin", icon: "shield", route: "Admin" } satisfies ProfileMenuItem]
-    : profileMenuItems;
+  const isInvestor =
+  user?.profile?.role?.toLowerCase() === "investor";
+
+  const menuItems = [
+    ...profileMenuItems,
+
+    isInvestor
+      ? {
+          label: "Investment Watchlist",
+          icon: "bookmark",
+          route: "InvestmentWatchlist",
+        }
+      : {
+          label: "New Project",
+          icon: "plus",
+          route: "Projects",
+        },
+
+    ...(isAdmin
+      ? [
+          {
+            label: "Admin",
+            icon: "shield",
+            route: "Admin",
+          },
+        ]
+      : []),
+  ];
 
   const handleMenuPress = (item: ProfileMenuItem) => {
     setIsProfileMenuOpen(false);
@@ -48,15 +81,64 @@ export const AppHeader = () => {
       return;
     }
 
-    if (item.route) {
-      navigation.navigate(item.route);
+    
+    if (item.action === "meetings") {
+      if (user?.role === "ADMIN") {
+        navigation.navigate("AdminMeetings");
+        return;
+      }
+
+      if (
+        user?.profile?.role?.toLowerCase() ===
+       "founder"
+     ) {
+       navigation.navigate(
+         "FounderMeetings",
+         {
+           startupId:
+             user.profile.projectId,
+          },
+        );
+
+        return;
+      }
+
+      navigation.navigate(
+        "InvestorMeetings",
+      );
+
+      return;
     }
+
+    if (item.route) {
+      navigation.navigate(
+       item.route as never,
+      );
+    }
+
   };
 
   return (
     <View className="relative z-50 border-b border-border bg-surface px-5 py-4">
-      <View className="flex-row items-center justify-between">
-        <AppLogo />
+      <View className="flex-row items-center justify-between"> 
+        {showBackButton ? (
+          <Pressable
+          onPress={() => navigation.goBack()}
+          className="flex-row items-center gap-2"
+        >
+          <Feather
+            name="arrow-left"
+            size={20}
+            color={colors.text}
+          />
+        
+          <AppText weight="semibold">
+            Back
+          </AppText>
+        </Pressable>
+        ) : (
+          <AppLogo />
+        )}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open profile menu"
@@ -112,7 +194,7 @@ export const AppHeader = () => {
             <Pressable
               accessibilityRole="button"
               onPress={() => handleMenuPress({ label: "Sign out", icon: "log-out", action: "logout" })}
-              className="flex-row items-center gap-4 px-6 py-3"
+              className="flex-row items-center gap-5 px-6 py-4"
             >
               <View className="w-8 items-center">
                 <Feather name="log-out" size={22} color={colors.text} />

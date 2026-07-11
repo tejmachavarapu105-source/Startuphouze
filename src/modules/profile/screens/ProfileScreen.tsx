@@ -1,52 +1,153 @@
+import { useEffect } from "react";
 import { Alert, ScrollView, Switch, View } from "react-native";
-
+import { useNavigation } from "@react-navigation/native";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { AppButton } from "@/components/ui/AppButton";
 import { AppScreen } from "@/components/ui/AppScreen";
 import { AppText } from "@/components/ui/AppText";
 import { AppTextInput } from "@/components/ui/AppTextInput";
+import { ONBOARDING_ROLES } from "@/constants/memberRoles";
 import { AuthErrorBanner } from "@/modules/auth/components/AuthErrorBanner";
 import { useAuthStore } from "@/modules/auth/store";
+import { ProfileCompletionBar } from "@/modules/onboarding/components/ProfileCompletionBar";
+import { RoleProfileSection } from "@/modules/profile/components/RoleProfileSection";
 import { useProfileForm } from "@/modules/profile/hooks";
 import { useUserStore } from "@/modules/user/store";
 import { useToastStore } from "@/store/toastStore";
 import { useThemeTokens } from "@/hooks/useThemeTokens";
+import { ResumeCard } from "@/components/profile/ResumeCard";
+import * as DocumentPicker from 'expo-document-picker';
 
 export const ProfileScreen = () => {
   const colors = useThemeTokens();
+  const navigation = useNavigation<any>();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const deleteAccount = useUserStore((state) => state.deleteAccount);
   const isDeletingAccount = useUserStore((state) => state.isDeletingAccount);
   const showToast = useToastStore((state) => state.show);
-  const { values, errorMessage, isSaving, isAvatarSaving, setValue, submit, submitAvatar } = useProfileForm();
+  const {
+    profile,
+    values,
+    memberRole,
+    profileCompletion,
+    errorMessage,
+    isSaving,
+    isAvatarSaving,    
+    isResumeSaving,
+    setValue,
+    setRoleProfile,
+    ensureRoleProfile,
+    submit,
+    submitAvatar,
+    submitResume,
+    submitResumeDelete,
+  } = useProfileForm();
 
+  useEffect(() => {
+    ensureRoleProfile();
+  }, [ensureRoleProfile, values.role]);
+  console.log("PROFILE SCREEN LOADED");
   const handleDeleteAccount = async () => {
     const didDelete = await deleteAccount();
     if (didDelete) {
-      showToast({ type: "success", title: "Account deleted", message: "Your Startuphouze account was removed." });
+      showToast({ type: "success", title: "Account deleted", message: "Your Foundr account was removed." });
       await logout();
     }
   };
 
   const confirmDeleteAccount = () => {
-    Alert.alert("Delete account?", "This will remove your Startuphouze account and sign you out.", [
+    Alert.alert("Delete account?", "This will remove your Foundr account and sign you out.", [
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: () => void handleDeleteAccount() }
     ]);
   };
+  const handleResumeUpload = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+  
+      if (result.canceled || result.assets?.length === 0) {
+        return;
+      }
+  
+      const file = result.assets[0];
+  
+      const formData = new FormData();
+  
+      formData.append(
+        "file",
+        {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType || "application/octet-stream",
+        } as any,
+      );
+  
+      const success = await submitResume(formData);
+  
+      if (success) {
+        showToast({
+          type: "success",
+          title: "Resume uploaded",
+        });
+      }
+    } catch (error) {
+      console.error(error);
+  
+      showToast({
+        type: "error",
+        title: "Resume upload failed",
+      });
+    }
+  };
+  const roleLabel = ONBOARDING_ROLES.find((role) => role.value === memberRole)?.label ?? values.role;
+
+  const handleResumeDelete = async () => {
+    Alert.alert(
+      "Delete Resume",
+      "Are you sure you want to delete your resume?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await submitResumeDelete();
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <AppScreen>
+      <AppHeader />
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <AppText size="2xl" weight="bold" className="mt-6">
           Profile
         </AppText>
         <AppText tone="muted" className="mt-2">
-          {user?.email ?? "Complete your Startuphouze profile."}
+          {user?.email ?? "Complete your Foundr profile."}
         </AppText>
 
-        <View className="mt-6 gap-4 rounded-md border border-border bg-surface p-4 shadow-sm">
+        <View className="mt-6">
+          <ProfileCompletionBar percent={profileCompletion} />
+        </View>
+
+        <View className="mt-6 gap-4 rounded-md border border-border bg-surface p-4">
           <AuthErrorBanner message={errorMessage} />
+          <AppText weight="bold">{roleLabel} · Shared details</AppText>
           <AppTextInput label="Full name" value={values.fullName} onChangeText={(value) => setValue("fullName", value)} />
           <AppTextInput label="Headline" value={values.headline} onChangeText={(value) => setValue("headline", value)} />
           <AppTextInput
@@ -57,16 +158,7 @@ export const ProfileScreen = () => {
             onChangeText={(value) => setValue("bio", value)}
             className="h-24 py-3"
           />
-          <AppTextInput label="Role" value={values.role} onChangeText={(value) => setValue("role", value)} />
           <AppTextInput label="Location" value={values.location} onChangeText={(value) => setValue("location", value)} />
-          <AppTextInput label="Company" value={values.company} onChangeText={(value) => setValue("company", value)} />
-          <AppTextInput
-            label="Website"
-            value={values.website}
-            autoCapitalize="none"
-            keyboardType="url"
-            onChangeText={(value) => setValue("website", value)}
-          />
           <AppTextInput
             label="LinkedIn URL"
             value={values.linkedinUrl}
@@ -75,15 +167,9 @@ export const ProfileScreen = () => {
             onChangeText={(value) => setValue("linkedinUrl", value)}
           />
           <AppTextInput
-            label="Skills"
-            value={values.skills}
-            placeholder="JavaScript, Node.js"
-            onChangeText={(value) => setValue("skills", value)}
-          />
-          <AppTextInput
-            label="Looking for"
+            label="Looking for / goals"
             value={values.lookingFor}
-            placeholder="collaboration, funding"
+            placeholder="co_founder, investor, customers"
             onChangeText={(value) => setValue("lookingFor", value)}
           />
 
@@ -91,7 +177,7 @@ export const ProfileScreen = () => {
             <View className="flex-1 pr-4">
               <AppText weight="semibold">Open to connect</AppText>
               <AppText tone="muted" size="sm" className="mt-1">
-                Show a green availability signal on your profile.
+                Show availability on your profile.
               </AppText>
             </View>
             <Switch
@@ -100,11 +186,31 @@ export const ProfileScreen = () => {
               thumbColor={values.openToConnect ? colors.primary : colors.border}
             />
           </View>
+        </View>
 
+        {memberRole ? (
+          <View className="mt-4 gap-4 rounded-md border border-border bg-surface p-4">
+            <AppText weight="bold">{roleLabel} · Role details</AppText>
+            <RoleProfileSection role={values.role} roleProfile={values.roleProfile} onChange={setRoleProfile} />
+            <AppTextInput label="Company / startup" value={values.company} onChangeText={(value) => setValue("company", value)} />
+            <AppTextInput
+              label="Website"
+              value={values.website}
+              autoCapitalize="none"
+              keyboardType="url"
+              onChangeText={(value) => setValue("website", value)}
+            />
+            {memberRole === "professional" ? (
+              <AppTextInput label="Skills" value={values.skills} onChangeText={(value) => setValue("skills", value)} />
+            ) : null}
+          </View>
+        ) : null}
+
+        <View className="mt-4">
           <AppButton label="Save profile" loading={isSaving} onPress={() => void submit()} />
         </View>
 
-        <View className="mt-4 gap-4 rounded-md border border-border bg-surface p-4 shadow-sm">
+        <View className="mt-4 gap-4 rounded-md border border-border bg-surface p-4">
           <AppText size="lg" weight="bold">
             Avatar
           </AppText>
@@ -118,6 +224,14 @@ export const ProfileScreen = () => {
           />
           <AppButton label="Update avatar" variant="outline" loading={isAvatarSaving} onPress={() => void submitAvatar()} />
         </View>
+
+        <ResumeCard
+          profile={profile}
+          isUploading={isResumeSaving}
+          onUpload={() => void handleResumeUpload()}
+          onReplace={() => void handleResumeUpload()}
+          onDelete={() => void handleResumeDelete()}
+        />
 
         <View className="mb-8 mt-4 gap-3">
           <AppButton label="Sign out" variant="outline" onPress={() => void logout()} />

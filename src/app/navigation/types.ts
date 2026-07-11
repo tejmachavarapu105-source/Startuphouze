@@ -13,14 +13,61 @@ export type MainTabParamList = {
   Projects: undefined;
   Jobs: undefined;
   Events: undefined;
-  Search: undefined;
-  Admin: undefined;
+};
+
+export type MainStackParamList = {
+  Tabs: undefined;
+
+  Profile: undefined;
   Discover: undefined;
   Network: undefined;
-  Profile: undefined;
+  Search: undefined;
+  Admin: undefined;
+
+  UserProfile: {
+    userId: string;
+  }; 
+
+    BusinessSummary: {
+      projectId: string;
+    };
+    
+    Traction: {
+      projectId: string;
+    };
+    
+    Financial: {
+      projectId: string;
+    };
+    
+    Ownership: {
+      projectId: string;
+    };
+      
+    Review: {
+      projectId: string;
+    };
+  
+    InvestorSnapshotView: {
+      projectId: string;
+    };
+    
+    InvestorMeetings: undefined;
+    FounderMeetings: { startupId: string;
+    };
+    AdminMeetings: undefined;
+};
+
+
+export type OnboardingStackParamList = {
+  OnboardingWelcome: undefined;
+  OnboardingGoals: undefined;
+  OnboardingQuickProfile: undefined;
+  OnboardingMatch: undefined;
 };
 
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
-  Main: NavigatorScreenParams<MainTabParamList>;
+  Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
+  Main: NavigatorScreenParams<MainStackParamList>;
 };

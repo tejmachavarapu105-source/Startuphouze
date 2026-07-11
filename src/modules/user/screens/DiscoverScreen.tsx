@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { FlatList, ListRenderItem, Pressable, TextInput, View } from "react-native";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 import { AppButton } from "@/components/ui/AppButton";
 import { AppScreen } from "@/components/ui/AppScreen";
@@ -8,10 +9,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useThemeTokens } from "@/hooks/useThemeTokens";
 import { UserCard } from "@/modules/user/components/UserCard";
-import { UserDetailPanel } from "@/modules/user/components/UserDetailPanel";
 import { UserSkeletonList } from "@/modules/user/components/UserSkeletonList";
-import { useDiscoverUsers, useUserDetail, userRoleFilters } from "@/modules/user/hooks";
+import { useDiscoverUsers, userRoleFilters } from "@/modules/user/hooks";
+import { useOpenUserProfile } from "@/modules/user/hooks/useOpenUserProfile";
 import { UserRole, UserSummary } from "@/modules/user/types";
+
 
 export const DiscoverScreen = () => {
   const colors = useThemeTokens();
@@ -29,11 +31,11 @@ export const DiscoverScreen = () => {
     setRole,
     loadMore
   } = useDiscoverUsers();
-  const { selectedUser, isDetailLoading, detailErrorMessage, selectUser, clearSelectedUser } = useUserDetail();
+  const openUserProfile = useOpenUserProfile();
 
   const renderUser = useCallback<ListRenderItem<UserSummary>>(
-    ({ item }) => <UserCard user={item} onPress={(id) => void selectUser(id)} showFollowButton />,
-    [selectUser]
+    ({ item }) => <UserCard user={item} onPress={openUserProfile} showFollowButton />,
+    [openUserProfile]
   );
 
   const keyExtractor = useCallback((item: UserSummary) => item.id, []);
@@ -62,6 +64,8 @@ export const DiscoverScreen = () => {
 
   return (
     <AppScreen withHorizontalPadding={false}>
+      <AppHeader />
+      
       <FlatList
         data={users}
         keyExtractor={keyExtractor}
@@ -98,13 +102,6 @@ export const DiscoverScreen = () => {
               renderItem={({ item }) => renderRoleChip(item)}
               showsHorizontalScrollIndicator={false}
               className="mt-4"
-            />
-
-            <UserDetailPanel
-              user={selectedUser}
-              isLoading={isDetailLoading}
-              errorMessage={detailErrorMessage}
-              onClose={clearSelectedUser}
             />
 
             {totalCount > 0 ? (

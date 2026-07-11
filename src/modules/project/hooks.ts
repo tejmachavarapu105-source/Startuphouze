@@ -1,8 +1,45 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 
 import { useAuthStore } from "@/modules/auth/store";
 import { useProjectStore } from "@/modules/project/store";
 import { ProjectPayload } from "@/modules/project/types";
+
+export const useInvestorDiscovery = () => {
+  const userId = useAuthStore(
+    (state) => state.user?.id
+    );
+  const investorStartups =
+    useProjectStore(
+      (state) => state.investorStartups
+    );
+ 
+  const loadInvestorDiscovery =
+    useProjectStore(
+      (state) => state.loadInvestorDiscovery
+    );
+
+    const loadSavedStartups =
+  useProjectStore(
+    (state) => state.loadSavedStartups
+  );
+
+  useEffect(() => {
+    void loadInvestorDiscovery();
+  }, []);
+
+
+  useEffect(() => {
+    if (userId) {
+      void loadSavedStartups();
+    }
+  }, [userId, loadSavedStartups]);
+
+  return {
+    investorStartups,
+  };
+};
+
+ 
 
 export const projectStageOptions = [
   { label: "All", value: "all" },
@@ -56,12 +93,14 @@ const csvToArray = (value: string) =>
     .filter(Boolean);
 
 export const useProjects = () => {
+  const userId = useAuthStore((state) => state.user?.id);
   const projects = useProjectStore((state) => state.projects);
   const filters = useProjectStore((state) => state.filters);
   const isLoading = useProjectStore((state) => state.isLoading);
   const isRefreshing = useProjectStore((state) => state.isRefreshing);
   const errorMessage = useProjectStore((state) => state.errorMessage);
   const loadProjects = useProjectStore((state) => state.loadProjects);
+  const loadSavedStartups = useProjectStore((state) => state.loadSavedStartups);
   const refreshProjects = useProjectStore((state) => state.refreshProjects);
   const loadStartups = useProjectStore((state) => state.loadStartups);
   const loadTrendingStartups = useProjectStore((state) => state.loadTrendingStartups);
@@ -69,14 +108,21 @@ export const useProjects = () => {
   const setQuery = useProjectStore((state) => state.setQuery);
   const setStage = useProjectStore((state) => state.setStage);
   const setProjectType = useProjectStore((state) => state.setProjectType);
-
+  const hasLoaded = useRef(false);
   useEffect(() => {
-    if (projects.length === 0 && !isLoading) {
-      void loadProjects();
-      void loadStartups();
-      void loadTrendingStartups();
+    if (hasLoaded.current) {
+      return;
     }
-  }, [isLoading, loadProjects, loadStartups, loadTrendingStartups, projects.length]);
+  
+    hasLoaded.current = true;
+  
+    void Promise.all([
+      loadProjects(),
+      loadStartups(),
+      loadTrendingStartups(),
+      loadSavedStartups(),
+    ]);
+  }, []);
 
   const filteredProjects = useMemo(
     () =>

@@ -1,6 +1,8 @@
 import { AuthProfile } from "@/modules/auth/types";
-
+import { RoleProfileData } from "@/modules/profile/schemas";
 export type Profile = AuthProfile;
+
+
 
 export type UpdateProfilePayload = {
   fullName: string;
@@ -14,8 +16,16 @@ export type UpdateProfilePayload = {
   skills: string[];
   lookingFor: string[];
   openToConnect: boolean;
+  onboardingCompleted?: boolean;
+  onboardingGoals?: string[];
+  profileCompletion?: number;
+  roleProfile?: RoleProfileData | null;
+  resume?: File | null;
 };
 
 export type UpdateAvatarPayload = {
   avatarUrl: string;
 };
+
+export type UpdateResumePayload = FormData;
+  
